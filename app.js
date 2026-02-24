@@ -21,16 +21,13 @@ parser.on('data', async (line) => {
     try {
       const data = JSON.parse(line)
       console.log('Sensors:', data)
-      const response = await ollama.chat({
-        model: 'llama3.1:8b',
-        messages: [{role: 'user', 
-            content: `
-            Question: ${data.question}
-            Instruction: Output the exact phrase "LED_TRUE_ON"(if question is true) or "LED_FALSE_ON"(if question is false) and nothing else. 
-            Constraint: No conversational filler, no markdown, no quotes
-            Response:`
-        }],
-      })
+      const prompt =  `
+        Question: ${data.question}
+        Instruction: Output the exact phrase "LED_TRUE_ON"(if question is true) or "LED_FALSE_ON"(if question is false) and nothing else. 
+        Constraint: No conversational filler, no markdown, no quotes
+        Response:
+      `
+      sendMessage(prompt)
       console.log(response.message.content)
       sendToArduino(response.message.content)
     } catch (e) {
