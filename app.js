@@ -3,6 +3,7 @@ import express from 'express'
 import { SerialPort } from 'serialport'
 import { ReadlineParser } from '@serialport/parser-readline'
 import bodyParser from 'body-parser'
+import sendMessage from './model/llama.js'
 const app = express()
 
 const port = new SerialPort({
@@ -27,7 +28,7 @@ parser.on('data', async (line) => {
         Constraint: No conversational filler, no markdown, no quotes
         Response:
       `
-      sendMessage(prompt)
+      const response = await sendMessage(prompt)
       console.log(response.message.content)
       sendToArduino(response.message.content)
     } catch (e) {
@@ -48,16 +49,13 @@ app.use(bodyParser.json())
 app.post('/', async (req, res) => {
   const { question } = req.body;
   console.log(question)
-  const response = await ollama.chat({
-    model: 'llama3.1:8b',
-    messages: [{role: 'user', 
-        content: `
-        Question: ${question}
-        Instruction: Output the exact phrase "LED_TRUE_ON"(if question is true) or "LED_FALSE_ON"(if question is false) and nothing else. 
-        Constraint: No conversational filler, no markdown, no quotes
-        Response:`
-    }],
-  })
+  const prompt =  `
+    Question: ${question}
+    Instruction: Output the exact phrase "LED_TRUE_ON"(if question is true) or "LED_FALSE_ON"(if question is false) and nothing else. 
+    Constraint: No conversational filler, no markdown, no quotes
+    Response:
+  `
+  const response = await sendMessage(prompt)
   console.log(response.message.content)
   sendToArduino(response.message.content)
   res.send(response.message.content)
