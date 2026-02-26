@@ -5,7 +5,7 @@ import { ReadlineParser } from '@serialport/parser-readline'
 import bodyParser from 'body-parser'
 import sendMessage from './model/llama.js'
 import { getQuestion } from './controllers/questions.controller.js'
-import { getTemperature } from './controllers/temperature.controller.js'
+import { setTemperature, getTemperature } from './controllers/temperature.controller.js'
 const app = express()
 
 const port = new SerialPort({
@@ -40,7 +40,7 @@ parser.on('data', async (line) => {
     }
     try {
       if(line.includes('temperature')) {
-        const temperature = await getTemperature(line)
+        const temperature = await setTemperature(line)
         sendToArduino(temperature)
       }
       else{
@@ -56,38 +56,25 @@ port.on('open', () => {
   console.log('Arduino connected')
 })
 
-// port.on('data', data => {
-//   console.log('[ARDUINO]', data.toString())
-// })
-
 app.use(bodyParser.json())
 
 app.post('/', async (req, res) => {
   const { prompt: _prompt } = req.body;
   const prompt = `Question: ${_prompt}
-Instruction: Answer only the question above. Give a direct, informative answer. No preamble, no markdown, no quotes, no conversational filler—only the answer that informs about the question.
+Instruction: Answer in one short sentence that informs about the question. Use a natural phrase like "Now in your room --- degrees" (or similar wording). Include the relevant number or fact in the sentence. No markdown, no quotes, no extra filler—only this one sentence.
 Response: `
   const response = await sendMessage(prompt)
-  console.log(response.message.content)
   sendToArduino(response.message.content)
   res.send(response.message.content)
 })
 
 app.get('/temperature', async (req, res) => {
   try{
-    const prompt = `
-    Question: What is the temperature and humidity?
-    Instruction: Output the exact phrase "<temperature>,<humidity>" and nothing else. If you don't know the temperature and humidity, output "0,0". 
-    Do not any other text or punctuation. Do not use any other words or phrases.
-    Constraint: No conversational filler, no markdown, no quotes
-    Response:
-    `
-    const data = await sendMessage(prompt)
-    const temperature = data.message.content.split(',')[0].trim()
-    const humidity = data.message.content.split(',')[1].trim()
+    const {temperature, humidity, response} = await getTemperature()
     sendToArduino(`{"temperature": ${temperature}, "humidity": ${humidity}}`)
-    res.send({"temperature": temperature, "humidity": humidity})
+    res.send(response)
   }catch(e){
+    console.error(e)
     return res.status(400).send('Error getting temperature and humidity')
   }
 })

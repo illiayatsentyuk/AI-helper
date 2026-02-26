@@ -10,7 +10,6 @@ export default async function sendMessage(prompt) {
             messages: messages,
         })
         messages.push({role: 'assistant', content: response.message.content})
-        console.log(`LLM response: ${response.message.content}`)
         return response;
     }catch(err){
         console.error(err);
