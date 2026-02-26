@@ -23,7 +23,7 @@ const parser = port.pipe(
 let sensorGateActive = false
 let sensorGateTimeout = null
 
-function activateSensorGate(durationMs = 6000) {
+function activateSensorGate(durationMs = 6000, res) {
   sensorGateActive = true
   if (sensorGateTimeout) {
     clearTimeout(sensorGateTimeout)
@@ -31,6 +31,7 @@ function activateSensorGate(durationMs = 6000) {
   sensorGateTimeout = setTimeout(() => {
     sensorGateActive = false
     sensorGateTimeout = null
+    res.send('Sensors data sent')
   }, durationMs)
 }
 
@@ -68,9 +69,8 @@ Response: `
   res.send(response.message.content)
 })
 
-app.post('/gate', (req, res) => {
-  activateSensorGate(5000)
-  res.send('Sensor gate active for 5 seconds')
+app.post('/gate', async (req, res) => {
+  return activateSensorGate(5000, res)
 })
 
 app.listen(3000, () => {
