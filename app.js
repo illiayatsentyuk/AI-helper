@@ -4,6 +4,8 @@ import { SerialPort } from 'serialport'
 import { ReadlineParser } from '@serialport/parser-readline'
 import bodyParser from 'body-parser'
 import sendMessage from './model/llama.js'
+import { getQuestion } from './controllers/questions.controller.js'
+import { getTemperature } from './controllers/temperature.controller.js'
 const app = express()
 
 const port = new SerialPort({
@@ -38,29 +40,13 @@ parser.on('data', async (line) => {
     }
     try {
       if(line.includes('temperature')) {
-        const data = JSON.parse(line)
-        console.log('Temperature:', data)
-        const prompt =  `
-        Question: The temperature is ${data.temperature} degrees Celsius.
-        Instruction: REMEMBER the temperature and give response only with one word "REMEMBERED". 
-        Constraint: No conversational filler, no markdown, no quotes
-        Response:
-      `
-        const response = await sendMessage(prompt)
-        console.log(response.message.content)
-        return
+        const temperature = await getTemperature(line)
+        sendToArduino(temperature)
       }
-      const data = JSON.parse(line)
-      console.log('Sensors:', data)
-      const prompt =  `
-        Question: ${data.question}
-        Instruction: Output the exact phrase "LED_TRUE_ON"(if question is true) or "LED_FALSE_ON"(if question is false) and nothing else. 
-        Constraint: No conversational filler, no markdown, no quotes
-        Response:
-      `
-      const response = await sendMessage(prompt)
-      console.log(response.message.content)
-      sendToArduino(response.message.content)
+      else{
+        const question = await getQuestion(line)
+        sendToArduino(question)
+      }
     } catch (e) {
       console.log('Не JSON:', line)
     }
@@ -77,7 +63,10 @@ port.on('open', () => {
 app.use(bodyParser.json())
 
 app.post('/', async (req, res) => {
-  const { prompt } = req.body;
+  const { prompt: _prompt } = req.body;
+  const prompt = `Question: ${_prompt}
+Instruction: Answer only the question above. Give a direct, informative answer. No preamble, no markdown, no quotes, no conversational filler—only the answer that informs about the question.
+Response: `
   const response = await sendMessage(prompt)
   console.log(response.message.content)
   sendToArduino(response.message.content)
@@ -94,8 +83,8 @@ app.get('/temperature', async (req, res) => {
     Response:
     `
     const data = await sendMessage(prompt)
-    const temperature = data.message.content.split(',')[0]
-    const humidity = data.message.content.split(',')[1]
+    const temperature = data.message.content.split(',')[0].trim()
+    const humidity = data.message.content.split(',')[1].trim()
     sendToArduino(`{"temperature": ${temperature}, "humidity": ${humidity}}`)
     res.send({"temperature": temperature, "humidity": humidity})
   }catch(e){
