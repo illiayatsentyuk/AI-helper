@@ -84,6 +84,25 @@ app.post('/', async (req, res) => {
   res.send(response.message.content)
 })
 
+app.get('/temperature', async (req, res) => {
+  try{
+    const prompt = `
+    Question: What is the temperature and humidity?
+    Instruction: Output the exact phrase "<temperature>,<humidity>" and nothing else. If you don't know the temperature and humidity, output "0,0". 
+    Do not any other text or punctuation. Do not use any other words or phrases.
+    Constraint: No conversational filler, no markdown, no quotes
+    Response:
+    `
+    const data = await sendMessage(prompt)
+    const temperature = data.message.content.split(',')[0]
+    const humidity = data.message.content.split(',')[1]
+    sendToArduino(`{"temperature": ${temperature}, "humidity": ${humidity}}`)
+    res.send({"temperature": temperature, "humidity": humidity})
+  }catch(e){
+    return res.status(400).send('Error getting temperature and humidity')
+  }
+})
+
 app.post('/gate', (req, res) => {
   activateSensorGate(5000)
   res.send('Sensor gate active for 5 seconds')
