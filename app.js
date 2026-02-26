@@ -18,8 +18,38 @@ const parser = port.pipe(
     new ReadlineParser({ delimiter: '\n' })
 )
 
+let sensorGateActive = false
+let sensorGateTimeout = null
+
+function activateSensorGate(durationMs = 6000) {
+  sensorGateActive = true
+  if (sensorGateTimeout) {
+    clearTimeout(sensorGateTimeout)
+  }
+  sensorGateTimeout = setTimeout(() => {
+    sensorGateActive = false
+    sensorGateTimeout = null
+  }, durationMs)
+}
+
 parser.on('data', async (line) => {
+    if (!sensorGateActive) {
+      return
+    }
     try {
+      if(line.includes('temperature')) {
+        const data = JSON.parse(line)
+        console.log('Temperature:', data)
+        const prompt =  `
+        Question: The temperature is ${data.temperature} degrees Celsius.
+        Instruction: REMEMBER the temperature and give response only with one word "REMEMBERED". 
+        Constraint: No conversational filler, no markdown, no quotes
+        Response:
+      `
+        const response = await sendMessage(prompt)
+        console.log(response.message.content)
+        return
+      }
       const data = JSON.parse(line)
       console.log('Sensors:', data)
       const prompt =  `
@@ -47,18 +77,16 @@ port.on('open', () => {
 app.use(bodyParser.json())
 
 app.post('/', async (req, res) => {
-  const { question } = req.body;
-  console.log(question)
-  const prompt =  `
-    Question: ${question}
-    Instruction: Output the exact phrase "LED_TRUE_ON"(if question is true) or "LED_FALSE_ON"(if question is false) and nothing else. 
-    Constraint: No conversational filler, no markdown, no quotes
-    Response:
-  `
+  const { prompt } = req.body;
   const response = await sendMessage(prompt)
   console.log(response.message.content)
   sendToArduino(response.message.content)
   res.send(response.message.content)
+})
+
+app.post('/gate', (req, res) => {
+  activateSensorGate(5000)
+  res.send('Sensor gate active for 5 seconds')
 })
 
 app.listen(3000, () => {

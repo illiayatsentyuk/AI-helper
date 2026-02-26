@@ -1,0 +1,13 @@
+ const prompt =  `
+        Question: The temperature is ${data.temperature} degrees Celsius.
+        Instruction: Remember the temperature and don't give any response. 
+        Constraint: No conversational filler, no markdown, no quotes
+        Response:
+      `
+
+      const prompt =  `
+        Question: ${data.question}
+        Instruction: Output the exact phrase "LED_TRUE_ON"(if question is true) or "LED_FALSE_ON"(if question is false) and nothing else. 
+        Constraint: No conversational filler, no markdown, no quotes
+        Response:
+      `
