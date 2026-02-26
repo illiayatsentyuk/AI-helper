@@ -68,17 +68,6 @@ Response: `
   res.send(response.message.content)
 })
 
-app.get('/temperature', async (req, res) => {
-  try{
-    const {temperature, humidity, response} = await getTemperature()
-    sendToArduino(`{"temperature": ${temperature}, "humidity": ${humidity}}`)
-    res.send(response)
-  }catch(e){
-    console.error(e)
-    return res.status(400).send('Error getting temperature and humidity')
-  }
-})
-
 app.post('/gate', (req, res) => {
   activateSensorGate(5000)
   res.send('Sensor gate active for 5 seconds')
